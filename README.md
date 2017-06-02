@@ -28,6 +28,7 @@ After provisioning, don't forget to run commands below:
   * **tag_env**
   * **tag_purpose**
   * **tag_role**
+
 # Outputs
 * **vpn_instance_private_ip_address:** Private IP address of the instance
 * **vpn_public_ip_addres:** EIP of the VPN box
