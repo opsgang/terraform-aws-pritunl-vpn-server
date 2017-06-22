@@ -2,19 +2,105 @@ data "aws_region" "current" {
   current = true
 }
 
+data "aws_caller_identity" "current" {}
+
 data "template_file" "user_data" {
   template = "${file("${path.module}/templates/user_data.sh.tpl")}"
 
   vars {
-    aws_region           = "${aws_region.current.name}"
+    aws_region           = "${data.aws_region.current.name}"
     s3_backup_bucket     = "${var.tag_product}-${var.tag_env}-backup"
     credstash_table_name = "credstash-${var.tag_product}-${var.tag_env}"
   }
 }
 
+data "template_file" "credstash_policy" {
+    template = "${file("${path.module}/templates/key_policy.json.tpl")}"
+
+    vars {
+      tag_product   = "${var.tag_product}"
+      tag_env       = "${var.tag_env}"
+      key_admin_arn = "${aws_iam_role.role.arn}"
+      account_id    = "${data.aws_caller_identity.current.account_id}"
+    }
+}
+
+data "template_file" "iam_instance_role_policy" {
+    template = "${file("${path.module}/templates/iam_instance_role_policy.json.tpl")}"
+
+    vars {
+      tag_product      = "${var.tag_product}"
+      tag_env          = "${var.tag_product}"
+      db_credstash_arn = "${aws_dynamodb_table.db_credstash.arn}"
+    }
+}
+
+resource "aws_dynamodb_table" "db_credstash" {
+  name           = "credstash-${var.tag_product}-${var.tag_env}"
+  read_capacity  = 1
+  write_capacity = 1
+  hash_key       = "name"
+  range_key      = "version"
+
+  attribute {
+    name = "name"
+    type = "S"
+  }
+
+  attribute {
+    name = "version"
+    type = "S"
+  }
+
+  tags {
+    Name    = "credstash-${var.tag_product}-${var.tag_env}"
+    product = "${var.tag_product}"
+    env     = "${var.tag_env}"
+    purpose = "${var.tag_purpose}"
+    role    = "${var.tag_role}"
+  }
+}
+
+resource "null_resource" "waiter" {
+
+  depends_on = ["aws_iam_instance_profile.ec2_profile"]
+
+  provisioner "local-exec" {
+    command = "sleep 15"
+  }
+}
+
+resource "aws_kms_key" "credstash" {
+
+  depends_on              = ["null_resource.waiter"]
+
+  description             = "Credstash space for ${var.tag_product}-${var.tag_env}"
+  #policy                  = "${data.template_file.credstash_policy.rendered}"
+  policy                  = "${data.template_file.credstash_policy.rendered}"
+  deletion_window_in_days = 7
+  is_enabled              = true
+  enable_key_rotation     = true
+
+  tags {
+    Name    = "credstash-${var.tag_product}-${var.tag_env}"
+    product = "${var.tag_product}"
+    env     = "${var.tag_env}"
+    purpose = "${var.tag_purpose}"
+    role    = "${var.tag_role}"
+  }
+}
+
+resource "aws_kms_alias" "credstash" {
+
+  depends_on    = ["aws_kms_key.credstash"]
+
+  name          = "alias/credstash-${var.tag_product}-${var.tag_env}"
+  target_key_id = "${aws_kms_key.credstash.key_id}"
+}
+
 resource "aws_s3_bucket" "backup" {
   bucket = "${var.tag_product}-${var.tag_env}-backup"
-  acl = "private"
+  acl    = "private"
 
   lifecycle_rule {
     prefix  = "backups"
@@ -62,104 +148,15 @@ resource "aws_iam_role_policy" "policy" {
 
   name   = "${var.tag_product}-${var.tag_env}"
   role   = "${aws_iam_role.role.id}"
-  policy = <<EOF
-{
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-          "Effect": "Allow",
-          "Action": [
-              "kms:*",
-              "dynamodb:*"
-          ],
-          "Resource": "*"
-      },
-      {
-        "Effect": "Allow",
-        "Action": [
-          "s3:ListBucket",
-          "s3:GetBucketLocation"
-        ],
-        "Resource": [ "arn:aws:s3:::${var.tag_product}-${var.tag_env}-backup" ]
-      },
-      {
-        "Effect": "Allow",
-        "Action": [
-          "s3:AbortMultipartUpload",
-          "s3:PutObject*",
-          "s3:Get*",
-          "s3:List*",
-          "s3:DeleteObject"
-        ],
-        "Resource": [ "arn:aws:s3:::${var.tag_product}-${var.tag_env}-backup/*" ]
-      },
-      {
-        "Effect": "Allow",
-        "Action": [
-            "ssm:DescribeAssociation",
-            "ssm:GetDocument",
-            "ssm:ListAssociations",
-            "ssm:UpdateAssociationStatus",
-            "ssm:UpdateInstanceInformation"
-        ],
-        "Resource": "*"
-      },
-      {
-          "Effect": "Allow",
-          "Action": [
-              "ec2messages:AcknowledgeMessage",
-              "ec2messages:DeleteMessage",
-              "ec2messages:FailMessage",
-              "ec2messages:GetEndpoint",
-              "ec2messages:GetMessages",
-              "ec2messages:SendReply"
-          ],
-          "Resource": "*"
-      },
-      {
-          "Effect": "Allow",
-          "Action": [
-              "cloudwatch:PutMetricData"
-          ],
-          "Resource": "*"
-      },
-      {
-          "Effect": "Allow",
-          "Action": [
-              "ec2:DescribeInstanceStatus"
-          ],
-          "Resource": "*"
-      },
-      {
-          "Effect": "Allow",
-          "Action": [
-              "ds:CreateComputer",
-              "ds:DescribeDirectories"
-          ],
-          "Resource": "*"
-      },
-      {
-          "Effect": "Allow",
-          "Action": [
-              "logs:CreateLogGroup",
-              "logs:CreateLogStream",
-              "logs:DescribeLogGroups",
-              "logs:DescribeLogStreams",
-              "logs:PutLogEvents"
-          ],
-          "Resource": "*"
-      }
-    ]
-}
-EOF
+  policy = "${data.template_file.iam_instance_role_policy.rendered}"
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
 
   depends_on = ["aws_iam_role.role", "aws_iam_role_policy.policy"]
 
-  name  = "${var.tag_product}-${var.tag_env}"
-  roles = ["${aws_iam_role.role.name}"]
+  name = "${var.tag_product}-${var.tag_env}"
+  role = "${aws_iam_role.role.name}"
 }
 
 resource "aws_security_group" "pritunl" {

@@ -1,8 +1,5 @@
-# Warning
-This module has not been tested yet. Start to use after it is tagged.
-
 # Overview
-This module setups a VPN server for a VPC to connect to instances
+This module setups a VPN server for a VPC to connect to instances.
 
 *Before you start to use the module you have to make sure you've created resources below*
 
@@ -14,6 +11,8 @@ After provisioning, don't forget to run commands below:
   * `export BACKUP_ENCRYPTION_KEY=$(uuidgen)`
   * `credstash -r REGION -t CREDSTASH_TABLE_NAME put -k alias/CREDSTASH_TABLE_NAME BACKUP_ENCRYPTION_KEY $BACKUP_ENCRYPTION_KEY`
   * `credstash -r REGION -t CREDSTASH_TABLE_NAME put -k alias/CREDSTASH_TABLE_NAME HEALTHCHECKS_IO_KEY CHANGEME-WITH-THE-KEY-FROM-HEALTHCHECKS-IO`
+* **Pritunl setup**
+  * `sudo pritunl setup-key`
 
 # Input variables
 
@@ -37,27 +36,18 @@ After provisioning, don't forget to run commands below:
 # Usage
 
 ```
+
 provider "aws" {
-  region     = "eu-west-1"
-}
-
-data "aws_caller_identity" "current" { }
-
-module "credstash" {
-  source         = "github.com/opsgang/terraform_credstash?ref=1.0.0"
-
-  product        = "vpn"
-  env            = "dev"
-  aws_account_id = "${data.aws_caller_identity.current.account_id}"
+	region="eu-west-1"
 }
 
 module "app_pritunl" {
   source           = "github.com/opsgang/terraform_pritunl?ref=1.0.0"
 
-  aws_key_name     = "vpn-ssh-key"
-  vpc_id           = "vpc-99999999"
-  public_subnet_id = "subnet-99999999"
-  ami_id           = "ami-99999999"
+  aws_key_name     = "org-eu-west-1"
+  vpc_id           = "${module.vpc.vpc_id}"
+  public_subnet_id = "${module.vpc.public_subnets[1]}"
+  ami_id           = "ami-01ccc867"
   instance_type    = "t2.small"
   office_ip_cidrs  = [
                       "8.8.8.8/32"
