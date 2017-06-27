@@ -15,24 +15,24 @@ data "template_file" "user_data" {
 }
 
 data "template_file" "credstash_policy" {
-    template = "${file("${path.module}/templates/key_policy.json.tpl")}"
+  template = "${file("${path.module}/templates/key_policy.json.tpl")}"
 
-    vars {
-      tag_product   = "${var.tag_product}"
-      tag_env       = "${var.tag_env}"
-      key_admin_arn = "${aws_iam_role.role.arn}"
-      account_id    = "${data.aws_caller_identity.current.account_id}"
-    }
+  vars {
+    tag_product   = "${var.tag_product}"
+    tag_env       = "${var.tag_env}"
+    key_admin_arn = "${aws_iam_role.role.arn}"
+    account_id    = "${data.aws_caller_identity.current.account_id}"
+  }
 }
 
 data "template_file" "iam_instance_role_policy" {
-    template = "${file("${path.module}/templates/iam_instance_role_policy.json.tpl")}"
+  template = "${file("${path.module}/templates/iam_instance_role_policy.json.tpl")}"
 
-    vars {
-      tag_product      = "${var.tag_product}"
-      tag_env          = "${var.tag_product}"
-      db_credstash_arn = "${aws_dynamodb_table.db_credstash.arn}"
-    }
+  vars {
+    tag_product      = "${var.tag_product}"
+    tag_env          = "${var.tag_product}"
+    db_credstash_arn = "${aws_dynamodb_table.db_credstash.arn}"
+  }
 }
 
 resource "aws_dynamodb_table" "db_credstash" {
@@ -62,7 +62,6 @@ resource "aws_dynamodb_table" "db_credstash" {
 }
 
 resource "null_resource" "waiter" {
-
   depends_on = ["aws_iam_instance_profile.ec2_profile"]
 
   provisioner "local-exec" {
@@ -71,10 +70,10 @@ resource "null_resource" "waiter" {
 }
 
 resource "aws_kms_key" "credstash" {
+  depends_on = ["null_resource.waiter"]
 
-  depends_on              = ["null_resource.waiter"]
+  description = "Credstash space for ${var.tag_product}-${var.tag_env}"
 
-  description             = "Credstash space for ${var.tag_product}-${var.tag_env}"
   #policy                  = "${data.template_file.credstash_policy.rendered}"
   policy                  = "${data.template_file.credstash_policy.rendered}"
   deletion_window_in_days = 7
@@ -91,8 +90,7 @@ resource "aws_kms_key" "credstash" {
 }
 
 resource "aws_kms_alias" "credstash" {
-
-  depends_on    = ["aws_kms_key.credstash"]
+  depends_on = ["aws_kms_key.credstash"]
 
   name          = "alias/credstash-${var.tag_product}-${var.tag_env}"
   target_key_id = "${aws_kms_key.credstash.key_id}"
@@ -124,7 +122,8 @@ resource "aws_s3_bucket" "backup" {
 
 # ec2 iam role
 resource "aws_iam_role" "role" {
-  name               = "${var.tag_product}-${var.tag_env}"
+  name = "${var.tag_product}-${var.tag_env}"
+
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -143,7 +142,6 @@ EOF
 }
 
 resource "aws_iam_role_policy" "policy" {
-
   depends_on = ["aws_iam_role.role"]
 
   name   = "${var.tag_product}-${var.tag_env}"
@@ -152,7 +150,6 @@ resource "aws_iam_role_policy" "policy" {
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
-
   depends_on = ["aws_iam_role.role", "aws_iam_role_policy.policy"]
 
   name = "${var.tag_product}-${var.tag_env}"
@@ -260,16 +257,18 @@ resource "aws_security_group" "allow_from_office" {
 }
 
 resource "aws_instance" "pritunl" {
-  ami                    = "${var.ami_id}"
-  instance_type          = "${var.instance_type}"
-  key_name               = "${var.aws_key_name}"
-  user_data              = "${data.template_file.user_data.rendered}"
+  ami           = "${var.ami_id}"
+  instance_type = "${var.instance_type}"
+  key_name      = "${var.aws_key_name}"
+  user_data     = "${data.template_file.user_data.rendered}"
+
   vpc_security_group_ids = [
     "${aws_security_group.pritunl.id}",
-    "${aws_security_group.allow_from_office.id}"
+    "${aws_security_group.allow_from_office.id}",
   ]
-  subnet_id              = "${var.public_subnet_id}"
-  iam_instance_profile   = "${aws_iam_instance_profile.ec2_profile.name}"
+
+  subnet_id            = "${var.public_subnet_id}"
+  iam_instance_profile = "${aws_iam_instance_profile.ec2_profile.name}"
 
   tags {
     Name    = "${var.tag_product}-${var.tag_env}-vpn"
@@ -281,6 +280,6 @@ resource "aws_instance" "pritunl" {
 }
 
 resource "aws_eip" "pritunl" {
-    instance = "${aws_instance.pritunl.id}"
-    vpc      = true
+  instance = "${aws_instance.pritunl.id}"
+  vpc      = true
 }
