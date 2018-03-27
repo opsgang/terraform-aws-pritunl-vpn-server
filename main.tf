@@ -30,7 +30,7 @@ data "template_file" "iam_instance_role_policy" {
 
   vars {
     tag_product      = "${var.tag_product}"
-    tag_env          = "${var.tag_product}"
+    tag_env          = "${var.tag_env}"
     db_credstash_arn = "${aws_dynamodb_table.db_credstash.arn}"
   }
 }
