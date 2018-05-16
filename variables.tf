@@ -18,12 +18,17 @@ variable "instance_type" {
   description = "Instance type for VPN Box"
 }
 
-variable "office_ip_cidrs" {
+variable "whitelist" {
   description = "[List] Office IP CIDRs for SSH and HTTPS"
   type        = "list"
 }
 
-variable "tag_product" {}
-variable "tag_env" {}
-variable "tag_purpose" {}
-variable "tag_role" {}
+variable "tags" {
+  description = "A map of tags to add to all resources"
+  default     = {}
+}
+
+variable "resource_name_prefix" {
+  description = "All the resources will be prefixed with this varible"
+  default     = "pritunl"
+}

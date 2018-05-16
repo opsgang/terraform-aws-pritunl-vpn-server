@@ -1,6 +1,6 @@
 {
   "Version": "2012-10-17",
-  "Id": "credstash-${tag_product}-${tag_env}-key",
+  "Id": "${resource_name_prefix}-credstash",
   "Statement": [
     {
       "Sid": "Enable IAM User Permissions",

@@ -9,8 +9,8 @@ data "template_file" "user_data" {
 
   vars {
     aws_region           = "${data.aws_region.current.name}"
-    s3_backup_bucket     = "${var.tag_product}-${var.tag_env}-backup"
-    credstash_table_name = "credstash-${var.tag_product}-${var.tag_env}"
+    s3_backup_bucket     = "${var.resource_name_prefix}-backup"
+    credstash_table_name = "${var.resource_name_prefix}-credstash"
   }
 }
 
@@ -18,10 +18,9 @@ data "template_file" "credstash_policy" {
   template = "${file("${path.module}/templates/key_policy.json.tpl")}"
 
   vars {
-    tag_product   = "${var.tag_product}"
-    tag_env       = "${var.tag_env}"
-    key_admin_arn = "${aws_iam_role.role.arn}"
-    account_id    = "${data.aws_caller_identity.current.account_id}"
+    resource_name_prefix = "${var.resource_name_prefix}"
+    key_admin_arn        = "${aws_iam_role.role.arn}"
+    account_id           = "${data.aws_caller_identity.current.account_id}"
   }
 }
 
@@ -29,14 +28,13 @@ data "template_file" "iam_instance_role_policy" {
   template = "${file("${path.module}/templates/iam_instance_role_policy.json.tpl")}"
 
   vars {
-    tag_product      = "${var.tag_product}"
-    tag_env          = "${var.tag_env}"
-    db_credstash_arn = "${aws_dynamodb_table.db_credstash.arn}"
+    resource_name_prefix = "${var.resource_name_prefix}"
+    db_credstash_arn     = "${aws_dynamodb_table.db_credstash.arn}"
   }
 }
 
 resource "aws_dynamodb_table" "db_credstash" {
-  name           = "credstash-${var.tag_product}-${var.tag_env}"
+  name           = "${var.resource_name_prefix}-credstash"
   read_capacity  = 1
   write_capacity = 1
   hash_key       = "name"
@@ -52,13 +50,12 @@ resource "aws_dynamodb_table" "db_credstash" {
     type = "S"
   }
 
-  tags {
-    Name    = "credstash-${var.tag_product}-${var.tag_env}"
-    product = "${var.tag_product}"
-    env     = "${var.tag_env}"
-    purpose = "${var.tag_purpose}"
-    role    = "${var.tag_role}"
-  }
+  tags = "${
+            merge(
+              map("Name", format("%s-%s", var.resource_name_prefix, "credstash")),
+              var.tags,
+            )
+          }"
 }
 
 resource "null_resource" "waiter" {
@@ -72,32 +69,30 @@ resource "null_resource" "waiter" {
 resource "aws_kms_key" "credstash" {
   depends_on = ["null_resource.waiter"]
 
-  description = "Credstash space for ${var.tag_product}-${var.tag_env}"
+  description = "Credstash space for ${var.resource_name_prefix}"
 
-  #policy                  = "${data.template_file.credstash_policy.rendered}"
   policy                  = "${data.template_file.credstash_policy.rendered}"
   deletion_window_in_days = 7
   is_enabled              = true
   enable_key_rotation     = true
 
-  tags {
-    Name    = "credstash-${var.tag_product}-${var.tag_env}"
-    product = "${var.tag_product}"
-    env     = "${var.tag_env}"
-    purpose = "${var.tag_purpose}"
-    role    = "${var.tag_role}"
-  }
+  tags = "${
+            merge(
+              map("Name", format("%s-%s", var.resource_name_prefix, "credstash")),
+              var.tags,
+            )
+          }"
 }
 
 resource "aws_kms_alias" "credstash" {
   depends_on = ["aws_kms_key.credstash"]
 
-  name          = "alias/credstash-${var.tag_product}-${var.tag_env}"
+  name          = "alias/${var.resource_name_prefix}-credstash"
   target_key_id = "${aws_kms_key.credstash.key_id}"
 }
 
 resource "aws_s3_bucket" "backup" {
-  bucket = "${var.tag_product}-${var.tag_env}-backup"
+  bucket = "${var.resource_name_prefix}-backup"
   acl    = "private"
 
   lifecycle_rule {
@@ -111,18 +106,17 @@ resource "aws_s3_bucket" "backup" {
     abort_incomplete_multipart_upload_days = 7
   }
 
-  tags {
-    Name    = "${var.tag_product}-${var.tag_env}-backup"
-    product = "${var.tag_product}"
-    env     = "${var.tag_env}"
-    purpose = "${var.tag_purpose}"
-    role    = "${var.tag_role}"
-  }
+  tags = "${
+            merge(
+              map("Name", format("%s-%s", var.resource_name_prefix, "backup")),
+              var.tags,
+            )
+          }"
 }
 
 # ec2 iam role
 resource "aws_iam_role" "role" {
-  name = "${var.tag_product}-${var.tag_env}"
+  name = "${var.resource_name_prefix}"
 
   assume_role_policy = <<EOF
 {
@@ -144,7 +138,7 @@ EOF
 resource "aws_iam_role_policy" "policy" {
   depends_on = ["aws_iam_role.role"]
 
-  name   = "${var.tag_product}-${var.tag_env}"
+  name   = "${var.resource_name_prefix}-instance-policy"
   role   = "${aws_iam_role.role.id}"
   policy = "${data.template_file.iam_instance_role_policy.rendered}"
 }
@@ -152,13 +146,13 @@ resource "aws_iam_role_policy" "policy" {
 resource "aws_iam_instance_profile" "ec2_profile" {
   depends_on = ["aws_iam_role.role", "aws_iam_role_policy.policy"]
 
-  name = "${var.tag_product}-${var.tag_env}"
+  name = "${var.resource_name_prefix}-instance"
   role = "${aws_iam_role.role.name}"
 }
 
 resource "aws_security_group" "pritunl" {
-  name        = "${var.tag_product}-${var.tag_env}-pritunl-vpn"
-  description = "${var.tag_product}-${var.tag_env}-pritunl-vpn"
+  name        = "${var.resource_name_prefix}-vpn"
+  description = "${var.resource_name_prefix}-vpn"
   vpc_id      = "${var.vpc_id}"
 
   # SSH access
@@ -201,17 +195,16 @@ resource "aws_security_group" "pritunl" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags {
-    Name    = "${var.tag_product}-${var.tag_env}-pritunl-vpn"
-    product = "${var.tag_product}"
-    env     = "${var.tag_env}"
-    purpose = "${var.tag_purpose}"
-    role    = "${var.tag_role}"
-  }
+  tags = "${
+            merge(
+              map("Name", format("%s-%s", var.resource_name_prefix, "vpn")),
+              var.tags,
+            )
+          }"
 }
 
 resource "aws_security_group" "allow_from_office" {
-  name        = "${var.tag_product}-${var.tag_env}-allow-from-office"
+  name        = "${var.resource_name_prefix}-whitelist"
   description = "Allows SSH connections and HTTP(s) connections from office"
   vpc_id      = "${var.vpc_id}"
 
@@ -220,7 +213,7 @@ resource "aws_security_group" "allow_from_office" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["${var.office_ip_cidrs}"]
+    cidr_blocks = ["${var.whitelist}"]
   }
 
   # HTTP access
@@ -228,7 +221,7 @@ resource "aws_security_group" "allow_from_office" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["${var.office_ip_cidrs}"]
+    cidr_blocks = ["${var.whitelist}"]
   }
 
   # ICMP
@@ -236,7 +229,7 @@ resource "aws_security_group" "allow_from_office" {
     from_port   = -1
     to_port     = -1
     protocol    = "icmp"
-    cidr_blocks = ["${var.office_ip_cidrs}"]
+    cidr_blocks = ["${var.whitelist}"]
   }
 
   # outbound internet access
@@ -247,13 +240,12 @@ resource "aws_security_group" "allow_from_office" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags {
-    Name    = "${var.tag_product}-${var.tag_env}-allow-from-office"
-    product = "${var.tag_product}"
-    env     = "${var.tag_env}"
-    purpose = "${var.tag_purpose}"
-    role    = "${var.tag_role}"
-  }
+  tags = "${
+            merge(
+              map("Name", format("%s-%s", var.resource_name_prefix, "whitelist")),
+              var.tags,
+            )
+          }"
 }
 
 resource "aws_instance" "pritunl" {
@@ -270,13 +262,12 @@ resource "aws_instance" "pritunl" {
   subnet_id            = "${var.public_subnet_id}"
   iam_instance_profile = "${aws_iam_instance_profile.ec2_profile.name}"
 
-  tags {
-    Name    = "${var.tag_product}-${var.tag_env}-vpn"
-    product = "${var.tag_product}"
-    env     = "${var.tag_env}"
-    purpose = "${var.tag_purpose}"
-    role    = "${var.tag_role}"
-  }
+  tags = "${
+            merge(
+              map("Name", format("%s-%s", var.resource_name_prefix, "vpn")),
+              var.tags,
+            )
+          }"
 }
 
 resource "aws_eip" "pritunl" {

@@ -5,3 +5,7 @@ output "vpn_instance_private_ip_address" {
 output "vpn_public_ip_addres" {
   value = "${aws_eip.pritunl.public_ip}"
 }
+
+output "vpn_management_ui" {
+  value = "https://${aws_eip.pritunl.public_ip}"
+}
