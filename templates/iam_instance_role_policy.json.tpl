@@ -17,7 +17,7 @@
           "s3:ListBucket",
           "s3:GetBucketLocation"
         ],
-        "Resource": [ "arn:aws:s3:::${tag_product}-${tag_env}-backup" ]
+        "Resource": [ "arn:aws:s3:::${resource_name_prefix}-backup" ]
       },
       {
         "Effect": "Allow",
@@ -28,7 +28,7 @@
           "s3:List*",
           "s3:DeleteObject"
         ],
-        "Resource": [ "arn:aws:s3:::${tag_product}-${tag_env}-backup/*" ]
+        "Resource": [ "arn:aws:s3:::${resource_name_prefix}-backup/*" ]
       },
       {
         "Effect": "Allow",

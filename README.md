@@ -22,41 +22,39 @@ After provisioning, don't forget to run commands below:
 * **ami_id:** Amazon Linux AMI ID
 * **instance_type:** Instance type of the VPN box (t2.small is mostly enough)
 * **office_ip_cidrs:** List of office IP addresses that you can SSH and non-VPN connected users can reach temporary profile download pages
-* AWS Tags
-  * **tag_product**
-  * **tag_env**
-  * **tag_purpose**
-  * **tag_role**
+* **tags**: Map of AWS Tag key and values
 
 # Outputs
 * **vpn_instance_private_ip_address:** Private IP address of the instance
 * **vpn_public_ip_addres:** EIP of the VPN box
+* **vpn_management_ui:** URL for the management UI
 
 
 # Usage
 
 ```
-
 provider "aws" {
-	region="eu-west-1"
+  region  = "eu-west-2"
 }
 
 module "app_pritunl" {
-  source           = "github.com/opsgang/terraform_pritunl?ref=1.0.0"
+  source = "github.com/opsgang/terraform_pritunl?ref=1.1.0"
 
-  aws_key_name     = "org-eu-west-1"
-  vpc_id           = "${module.vpc.vpc_id}"
-  public_subnet_id = "${module.vpc.public_subnets[1]}"
-  ami_id           = "ami-01ccc867"
-  instance_type    = "t2.small"
-  office_ip_cidrs  = [
-                      "8.8.8.8/32"
+  aws_key_name         = "org-eu-west-2"
+  vpc_id               = "${module.vpc.vpc_id}"
+  public_subnet_id     = "${module.vpc.public_subnets[1]}"
+  ami_id               = "ami-403e2524"
+  instance_type        = "t2.nano"
+  resource_name_prefix = "agate-pritunl"
+
+  whitelist = [
+    "8.8.8.8/32",
   ]
 
-  tag_product      = "vpn"
-  tag_env          = "dev"
-  tag_purpose      = "networking"
-  tag_role         = "vpn"
+  tags {
+    "role" = "vpn"
+    "env"  = "prod"
+  }
 }
 ```
 
