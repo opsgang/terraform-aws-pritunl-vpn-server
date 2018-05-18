@@ -29,6 +29,11 @@ variable "tags" {
 }
 
 variable "resource_name_prefix" {
-  description = "All the resources will be prefixed with this varible"
+  description = "All the resources will be prefixed with the value of this variable"
   default     = "pritunl"
+}
+
+variable "healthchecks_io_key" {
+  description = "Health check key for healthchecks.io"
+  default     = "invalid"
 }

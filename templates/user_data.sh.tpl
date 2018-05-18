@@ -3,11 +3,16 @@
 export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin:/root/bin
 
 yum update -y
-yum install -y gcc libffi-devel openssl-devel
 
-# credstash installation for secrets
+# upgrade pip to latest stable
 pip install -U pip
-/usr/local/bin/pip install -U credstash awscli
+# upgrade awscli to latest stable
+# upgrading pip from 9.0.3 to 10.0.1 changes the path from /usr/bin/pip to
+# /usr/local/bin/pip and the line below throws this error
+#     /var/lib/cloud/instance/scripts/part-001: line 10: /usr/bin/pip: No such file or directory
+# So, I export the PATH in the beggining correctly but still tries to from the old location
+# I couldn't see why in the outputs I'm going to hardcode it for now (01:10am)
+/usr/local/bin/pip install -U awscli
 
 echo "* hard nofile 64000" >> /etc/security/limits.conf
 echo "* soft nofile 64000" >> /etc/security/limits.conf
@@ -49,8 +54,12 @@ status amazon-ssm-agent || start amazon-ssm-agent
 cat <<EOF > /usr/sbin/mongobackup.sh
 #!/bin/bash -e
 
+set -o errexit  # exit on cmd failure
+set -o nounset  # fail on use of unset vars
+set -o pipefail # throw latest exit failure code in pipes
+set -o xtrace   # print command traces before executing command.
+
 export PATH="/usr/local/bin:\$PATH"
-export BACKUP_ENCRYPTION_KEY=\$(credstash --region ${aws_region} --table ${credstash_table_name} get BACKUP_ENCRYPTION_KEY)
 export BACKUP_TIME=\$(date +'%Y-%m-%d-%H-%M-%S')
 export BACKUP_FILENAME="\$BACKUP_TIME-pritunl-db-backup.tar.gz"
 export BACKUP_DEST="/tmp/\$BACKUP_TIME"
@@ -58,9 +67,7 @@ mkdir "\$BACKUP_DEST" && cd "\$BACKUP_DEST"
 mongodump -d pritunl
 tar zcf "\$BACKUP_FILENAME" dump
 rm -rf dump
-gpg --yes --batch --passphrase="\$BACKUP_ENCRYPTION_KEY" -c "\$BACKUP_FILENAME"
 md5sum "\$BACKUP_FILENAME" > "\$BACKUP_FILENAME.md5"
-rm "\$BACKUP_FILENAME"
 aws s3 sync . s3://${s3_backup_bucket}/backups/
 cd && rm -rf "\$BACKUP_DEST"
 EOF
@@ -68,8 +75,14 @@ chmod 700 /usr/sbin/mongobackup.sh
 
 cat <<EOF > /etc/cron.daily/pritunl-backup
 #!/bin/bash -e
-export PATH="/usr/local/bin:\$PATH"
-/usr/sbin/mongobackup.sh && curl -fsS --retry 3 "https://hchk.io/\$(credstash --region ${aws_region} --table ${credstash_table_name} get HEALTHCHECKS_IO_KEY)"
+export PATH="/usr/local/sbin:/usr/local/bin:\$PATH"
+mongobackup.sh && \
+  curl -fsS --retry 3 \
+  "https://hchk.io/\$( aws --region=${aws_region} --output=text \
+                        ssm get-parameters \
+                        --names ${healthchecks_io_key} \
+                        --with-decryption \
+                        --query 'Parameters[*].Value')"
 EOF
 chmod 755 /etc/cron.daily/pritunl-backup
 
