@@ -2,22 +2,12 @@
     "Version": "2012-10-17",
     "Statement": [
       {
-        "Action": [
-          "dynamodb:PutItem",
-          "dynamodb:GetItem",
-          "dynamodb:Query",
-          "dynamodb:Scan"
-        ],
-        "Effect": "Allow",
-        "Resource": "${db_credstash_arn}"
-      },
-      {
         "Effect": "Allow",
         "Action": [
           "s3:ListBucket",
           "s3:GetBucketLocation"
         ],
-        "Resource": [ "arn:aws:s3:::${resource_name_prefix}-backup" ]
+        "Resource": [ "arn:aws:s3:::${s3_backup_bucket}" ]
       },
       {
         "Effect": "Allow",
@@ -28,7 +18,7 @@
           "s3:List*",
           "s3:DeleteObject"
         ],
-        "Resource": [ "arn:aws:s3:::${resource_name_prefix}-backup/*" ]
+        "Resource": [ "arn:aws:s3:::${s3_backup_bucket}/*" ]
       },
       {
         "Effect": "Allow",
@@ -40,6 +30,13 @@
             "ssm:UpdateInstanceInformation"
         ],
         "Resource": "*"
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+            "ssm:GetParameters"
+        ],
+        "Resource": "arn:aws:ssm:${aws_region}:${account_id}:parameter${ssm_key_prefix}"
       },
       {
           "Effect": "Allow",

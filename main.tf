@@ -1,6 +1,4 @@
-data "aws_region" "current" {
-  current = true
-}
+data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
 
@@ -8,19 +6,19 @@ data "template_file" "user_data" {
   template = "${file("${path.module}/templates/user_data.sh.tpl")}"
 
   vars {
-    aws_region           = "${data.aws_region.current.name}"
-    s3_backup_bucket     = "${var.resource_name_prefix}-backup"
-    credstash_table_name = "${var.resource_name_prefix}-credstash"
+    aws_region          = "${data.aws_region.current.name}"
+    s3_backup_bucket    = "${var.resource_name_prefix}-backup"
+    healthchecks_io_key = "/pritunl/${var.resource_name_prefix}/healthchecks-io-key"
   }
 }
 
-data "template_file" "credstash_policy" {
+data "template_file" "kms_policy" {
   template = "${file("${path.module}/templates/key_policy.json.tpl")}"
 
   vars {
     resource_name_prefix = "${var.resource_name_prefix}"
-    key_admin_arn        = "${aws_iam_role.role.arn}"
     account_id           = "${data.aws_caller_identity.current.account_id}"
+    key_admin_arn        = "${aws_iam_role.role.arn}"
   }
 }
 
@@ -28,34 +26,12 @@ data "template_file" "iam_instance_role_policy" {
   template = "${file("${path.module}/templates/iam_instance_role_policy.json.tpl")}"
 
   vars {
+    s3_backup_bucket     = "${var.resource_name_prefix}-backup"
     resource_name_prefix = "${var.resource_name_prefix}"
-    db_credstash_arn     = "${aws_dynamodb_table.db_credstash.arn}"
+    aws_region           = "${data.aws_region.current.name}"
+    account_id           = "${data.aws_caller_identity.current.account_id}"
+    ssm_key_prefix       = "/pritunl/${var.resource_name_prefix}/*"
   }
-}
-
-resource "aws_dynamodb_table" "db_credstash" {
-  name           = "${var.resource_name_prefix}-credstash"
-  read_capacity  = 1
-  write_capacity = 1
-  hash_key       = "name"
-  range_key      = "version"
-
-  attribute {
-    name = "name"
-    type = "S"
-  }
-
-  attribute {
-    name = "version"
-    type = "S"
-  }
-
-  tags = "${
-            merge(
-              map("Name", format("%s-%s", var.resource_name_prefix, "credstash")),
-              var.tags,
-            )
-          }"
 }
 
 resource "null_resource" "waiter" {
@@ -66,34 +42,60 @@ resource "null_resource" "waiter" {
   }
 }
 
-resource "aws_kms_key" "credstash" {
+resource "aws_kms_key" "parameter_store" {
   depends_on = ["null_resource.waiter"]
 
-  description = "Credstash space for ${var.resource_name_prefix}"
+  description = "Parameter store and backup key for ${var.resource_name_prefix}"
 
-  policy                  = "${data.template_file.credstash_policy.rendered}"
-  deletion_window_in_days = 7
+  policy                  = "${data.template_file.kms_policy.rendered}"
+  deletion_window_in_days = 30
   is_enabled              = true
   enable_key_rotation     = true
 
   tags = "${
             merge(
-              map("Name", format("%s-%s", var.resource_name_prefix, "credstash")),
+              map("Name", format("%s-%s", var.resource_name_prefix, "parameter-store")),
               var.tags,
             )
           }"
 }
 
-resource "aws_kms_alias" "credstash" {
-  depends_on = ["aws_kms_key.credstash"]
+resource "aws_kms_alias" "parameter_store" {
+  depends_on = ["aws_kms_key.parameter_store"]
 
-  name          = "alias/${var.resource_name_prefix}-credstash"
-  target_key_id = "${aws_kms_key.credstash.key_id}"
+  name          = "alias/${var.resource_name_prefix}-parameter-store"
+  target_key_id = "${aws_kms_key.parameter_store.key_id}"
+}
+
+resource "aws_ssm_parameter" "healthchecks_io_key" {
+  name      = "/pritunl/${var.resource_name_prefix}/healthchecks-io-key"
+  type      = "SecureString"
+  value     = "${var.healthchecks_io_key}"
+  key_id    = "${aws_kms_key.parameter_store.arn}"
+  overwrite = true
+
+  tags = "${
+            merge(
+              map("Name", format("%s/%s/%s", "pritunl", var.resource_name_prefix, "healthchecks-io-key")),
+              var.tags,
+            )
+          }"
 }
 
 resource "aws_s3_bucket" "backup" {
+  depends_on = ["aws_kms_key.parameter_store"]
+
   bucket = "${var.resource_name_prefix}-backup"
   acl    = "private"
+
+  server_side_encryption_configuration {
+    rule {
+      apply_server_side_encryption_by_default {
+        kms_master_key_id = "${aws_kms_key.parameter_store.arn}"
+        sse_algorithm     = "aws:kms"
+      }
+    }
+  }
 
   lifecycle_rule {
     prefix  = "backups"

@@ -7,10 +7,6 @@ This module setups a VPN server for a VPC to connect to instances.
 
 After provisioning, don't forget to run commands below:
 
-* **credstash**
-  * `export BACKUP_ENCRYPTION_KEY=$(uuidgen)`
-  * `credstash -r REGION -t CREDSTASH_TABLE_NAME put -k alias/CREDSTASH_TABLE_NAME BACKUP_ENCRYPTION_KEY $BACKUP_ENCRYPTION_KEY`
-  * `credstash -r REGION -t CREDSTASH_TABLE_NAME put -k alias/CREDSTASH_TABLE_NAME HEALTHCHECKS_IO_KEY CHANGEME-WITH-THE-KEY-FROM-HEALTHCHECKS-IO`
 * **Pritunl setup**
   * `sudo pritunl setup-key`
 
@@ -21,8 +17,10 @@ After provisioning, don't forget to run commands below:
 * **public_subnet_id:** One of the public subnets to create the instance
 * **ami_id:** Amazon Linux AMI ID
 * **instance_type:** Instance type of the VPN box (t2.small is mostly enough)
-* **office_ip_cidrs:** List of office IP addresses that you can SSH and non-VPN connected users can reach temporary profile download pages
-* **tags**: Map of AWS Tag key and values
+* **whitelist:** List of office IP addresses that you can SSH and non-VPN connected users can reach temporary profile download pages
+* **tags:** Map of AWS Tag key and values
+* **resource_name_prefix:** All the resources will be prefixed with the value of this variable
+* **healthchecks_io_key:** Health check key for healthchecks.io
 
 # Outputs
 * **vpn_instance_private_ip_address:** Private IP address of the instance
@@ -38,14 +36,15 @@ provider "aws" {
 }
 
 module "app_pritunl" {
-  source = "github.com/opsgang/terraform_pritunl?ref=1.1.0"
+  source = "github.com/opsgang/terraform_pritunl?ref=2.0.0"
 
   aws_key_name         = "org-eu-west-2"
   vpc_id               = "${module.vpc.vpc_id}"
   public_subnet_id     = "${module.vpc.public_subnets[1]}"
   ami_id               = "ami-403e2524"
   instance_type        = "t2.nano"
-  resource_name_prefix = "agate-pritunl"
+  resource_name_prefix = "opsgang-pritunl"
+  healthchecks_io_key  = "NNNNNNNN-NNNN-NNNN-NNNN-NNNNNNNNNNN"
 
   whitelist = [
     "8.8.8.8/32",

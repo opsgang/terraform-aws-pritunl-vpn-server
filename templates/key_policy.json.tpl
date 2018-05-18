@@ -1,6 +1,6 @@
 {
   "Version": "2012-10-17",
-  "Id": "${resource_name_prefix}-credstash",
+  "Id": "${resource_name_prefix}-parameter-store",
   "Statement": [
     {
       "Sid": "Enable IAM User Permissions",
