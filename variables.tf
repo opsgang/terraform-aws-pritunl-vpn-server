@@ -16,6 +16,8 @@ variable "ami_id" {
 
 variable "instance_type" {
   description = "Instance type for VPN Box"
+  type        = "string"
+  default     = "t2.micro"
 }
 
 variable "whitelist" {
@@ -36,4 +38,10 @@ variable "resource_name_prefix" {
 variable "healthchecks_io_key" {
   description = "Health check key for healthchecks.io"
   default     = "invalid"
+}
+
+variable "internal_cidrs" {
+  description = "[List] IP CIDRs to whitelist in the pritunl's security group"
+  type        = "list"
+  default     = ["10.0.0.0/8"]
 }

@@ -162,15 +162,23 @@ resource "aws_security_group" "pritunl" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]
+    cidr_blocks = ["${var.internal_cidrs}"]
   }
 
-  # HTTP access
+  # HTTP access for Let's Encrypt validation
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTPS access
   ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]
+    cidr_blocks = ["${var.internal_cidrs}"]
   }
 
   # VPN WAN access
@@ -186,7 +194,7 @@ resource "aws_security_group" "pritunl" {
     from_port   = -1
     to_port     = -1
     protocol    = "icmp"
-    cidr_blocks = ["10.0.0.0/8"]
+    cidr_blocks = ["${var.internal_cidrs}"]
   }
 
   # outbound internet access
@@ -212,14 +220,16 @@ resource "aws_security_group" "allow_from_office" {
 
   # SSH access
   ingress {
+    description = "Allow SSH access from select CIDRs"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["${var.whitelist}"]
   }
 
-  # HTTP access
+  # HTTPS access
   ingress {
+    description = "Allow HTTPS access from select CIDRs"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -228,8 +238,9 @@ resource "aws_security_group" "allow_from_office" {
 
   # ICMP
   ingress {
+    description = "Allow ICMPv4 from select CIDRs"
     from_port   = -1
-    to_port     = -1
+    to_port   = -1
     protocol    = "icmp"
     cidr_blocks = ["${var.whitelist}"]
   }
