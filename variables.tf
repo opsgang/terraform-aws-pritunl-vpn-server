@@ -25,6 +25,12 @@ variable "whitelist" {
   type        = "list"
 }
 
+variable "whitelist_http" {
+  description = "[List] Whitelist for HTTP port"
+  type        = "list"
+  default     = ["0.0.0.0/0"]
+}
+
 variable "tags" {
   description = "A map of tags to add to all resources"
   default     = {}

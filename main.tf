@@ -167,10 +167,13 @@ resource "aws_security_group" "pritunl" {
 
   # HTTP access for Let's Encrypt validation
   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port = 80
+    to_port   = 80
+    protocol  = "tcp"
+
+    cidr_blocks = [
+      "${var.whitelist_http}",
+    ]
   }
 
   # HTTPS access
@@ -240,7 +243,7 @@ resource "aws_security_group" "allow_from_office" {
   ingress {
     description = "Allow ICMPv4 from select CIDRs"
     from_port   = -1
-    to_port   = -1
+    to_port     = -1
     protocol    = "icmp"
     cidr_blocks = ["${var.whitelist}"]
   }
