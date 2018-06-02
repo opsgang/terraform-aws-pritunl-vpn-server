@@ -18,7 +18,8 @@ After provisioning, don't forget to run commands below:
 * **ami_id:** Amazon Linux AMI ID
 * **instance_type:** Instance type of the VPN box (t2.small is mostly enough)
 * **whitelist:** List of office IP addresses that you can SSH and non-VPN connected users can reach temporary profile download pages
-* **internal_cidrs:** List of CIDRs that will be whitelisted to access the VPN server internally. _This option replaced the hard-coded 10.0.0.0/8 network range_
+* **whitelist_http:** List of IP addresses that you can allow HTTP connections.
+* **internal_cidrs:** List of CIDRs that will be whitelisted to access the VPN server internally.
 * **tags:** Map of AWS Tag key and values
 * **resource_name_prefix:** All the resources will be prefixed with the value of this variable
 * **healthchecks_io_key:** Health check key for healthchecks.io
