@@ -51,3 +51,8 @@ variable "internal_cidrs" {
   type        = "list"
   default     = ["10.0.0.0/8"]
 }
+
+variable "s3_bucket_name" {
+  description = "[String] Optional S3 bucket name for backups"
+  default     = ""
+}
