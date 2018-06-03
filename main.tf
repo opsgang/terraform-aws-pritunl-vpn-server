@@ -2,12 +2,16 @@ data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
 
+locals {
+  backup_bucket_name = "${var.s3_bucket_name != "" ? var.s3_bucket_name : format("%s-%s", var.resource_name_prefix, "backup")}"
+}
+
 data "template_file" "user_data" {
   template = "${file("${path.module}/templates/user_data.sh.tpl")}"
 
   vars {
     aws_region          = "${data.aws_region.current.name}"
-    s3_backup_bucket    = "${var.resource_name_prefix}-backup"
+    s3_backup_bucket    = "${local.backup_bucket_name}"
     healthchecks_io_key = "/pritunl/${var.resource_name_prefix}/healthchecks-io-key"
   }
 }
@@ -26,7 +30,7 @@ data "template_file" "iam_instance_role_policy" {
   template = "${file("${path.module}/templates/iam_instance_role_policy.json.tpl")}"
 
   vars {
-    s3_backup_bucket     = "${var.resource_name_prefix}-backup"
+    s3_backup_bucket     = "${local.backup_bucket_name}"
     resource_name_prefix = "${var.resource_name_prefix}"
     aws_region           = "${data.aws_region.current.name}"
     account_id           = "${data.aws_caller_identity.current.account_id}"
@@ -85,8 +89,9 @@ resource "aws_ssm_parameter" "healthchecks_io_key" {
 resource "aws_s3_bucket" "backup" {
   depends_on = ["aws_kms_key.parameter_store"]
 
-  bucket = "${var.resource_name_prefix}-backup"
-  acl    = "private"
+  bucket = "${local.backup_bucket_name}"
+
+  acl = "private"
 
   server_side_encryption_configuration {
     rule {
@@ -110,7 +115,7 @@ resource "aws_s3_bucket" "backup" {
 
   tags = "${
             merge(
-              map("Name", format("%s-%s", var.resource_name_prefix, "backup")),
+              map("Name", local.backup_bucket_name),
               var.tags,
             )
           }"

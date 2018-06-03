@@ -23,6 +23,7 @@ After provisioning, don't forget to run commands below:
 * **tags:** Map of AWS Tag key and values
 * **resource_name_prefix:** All the resources will be prefixed with the value of this variable
 * **healthchecks_io_key:** Health check key for healthchecks.io
+* **s3_bucket_name:** Optional bucket name for Pritunl backups
 
 # Outputs
 * **vpn_instance_private_ip_address:** Private IP address of the instance
@@ -47,6 +48,7 @@ module "app_pritunl" {
   instance_type        = "t2.nano"
   resource_name_prefix = "opsgang-pritunl"
   healthchecks_io_key  = "NNNNNNNN-NNNN-NNNN-NNNN-NNNNNNNNNNN"
+  s3_bucket_name       = "i-want-to-override-generated-bucket-name"
 
   whitelist = [
     "8.8.8.8/32",
