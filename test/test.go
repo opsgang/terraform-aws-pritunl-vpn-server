@@ -90,4 +90,15 @@ func Pritunl(t *testing.T) {
 	// Verify outbound internet access on the instance
 	ssh.CheckSSHCommand(t, host, "curl google.com")
 
+	// Check if the pritunl package is installed
+	ssh.CheckSSHCommand(t, host, "rpm -q pritunl")
+
+	// Check if the mongodb package is installed
+	ssh.CheckSSHCommand(t, host, "rpm -q mongodb-org")
+
+	// Check if the AWS SSM agent is running
+	ssh.CheckSSHCommand(t, host, "aws ssm describe-instance-information")
+
+	// Check if the logrotate configuration is valid
+	ssh.CheckSSHCommand(t, host, "logrotate -d '/etc/logrotate.d/pritunl'")
 }
