@@ -28,15 +28,23 @@ func Pritunl(t *testing.T) {
 	instanceText := fmt.Sprintf("Hello, %s!", uniqueID)
 
 	// Pick a random AWS region to test in. This helps ensure your code works in all regions.
-	awsRegion := aws.GetRandomRegion(t, nil, nil)
+	//awsRegion := aws.GetRandomRegion(t, nil, nil)
+	awsRegion := "us-east-1"
 
-	awsKeyName := "key"
-	amiID := "ami-403e2524"
+	// Set up key pair for ssh checks
+	ec2KeyPair := aws.CreateAndImportEC2KeyPair(t, awsRegion, fmt.Sprintf("pritunl-test-key-%s", uniqueID))
+	defer aws.DeleteEC2KeyPair(t, *ec2KeyPair)
+
+	vpcID := "vpc-10569769"
+	amiID := "ami-0ff8a91507f77f867"
+	publcSubnetID := "subnet-282be672"
 	tags := map[string]string{
 		"env":     "test",
 		"service": "pritunl",
-		"notes":   "test",
+		"Name":    fmt.Sprintf("pritunl-instance-%s", uniqueID),
 	}
+
+	bucketName := fmt.Sprintf("pritunl-backups-%s", uniqueID)
 
 	terraformOptions := &terraform.Options{
 		// The path to where our Terraform code is located
@@ -44,10 +52,13 @@ func Pritunl(t *testing.T) {
 
 		// Variables to pass to our Terraform code using -var options
 		Vars: map[string]interface{}{
-			"aws_region":   awsRegion,
-			"aws_key_name": awsKeyName,
-			"ami_id":       amiId,
-			"tags":         tags,
+			"aws_region":       awsRegion,
+			"aws_key_name":     ec2KeyPair.Name,
+			"vpc_id":           vpcID,
+			"ami_id":           amiId,
+			"public_subnet_id": publcSubnetID,
+			"tags":             tags,
+			"s3_bucket_name":   bucketName,
 		},
 	}
 
@@ -72,10 +83,6 @@ func Pritunl(t *testing.T) {
 
 	// Verify that we get back a 200 OK from the management UI
 	http_helper.HttpGetWithRetry(t, vpnManagementUI, 200, instanceText, maxRetries, timeBetweenRetries)
-
-	// Set up key pair for ssh checks
-
-	ec2KeyPair := aws.CreateAndImportEC2KeyPair(t, awsRegion, fmt.Sprintf("pritunl-test-key-%s", uniqueID))
 
 	// Set up host for ssh checks
 	host := ssh.Host{
