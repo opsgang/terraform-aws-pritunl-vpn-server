@@ -64,6 +64,8 @@ func Pritunl(t *testing.T) {
 
 	vpnManagementUI := terraform.Output(t, terraformOptions, "vpn_management_ui")
 
+	bucketID := terraform.Output(t, terraformOptions, "s3_bucket_name")
+
 	// It can take a minute or so for the Instance to boot up, so retry a few times
 	maxRetries := 30
 	timeBetweenRetries := 5 * time.Second
@@ -99,4 +101,13 @@ func Pritunl(t *testing.T) {
 
 	// Check if the logrotate configuration is valid
 	ssh.CheckSSHCommand(t, host, "logrotate -d '/etc/logrotate.d/pritunl'")
+
+	// Check if the instance can list the contents of the s3 bucket
+	ssh.CheckSSHCommand(t, host, fmt.Sprintf("aws s3 ls s3://%s", bucketID))
+
+	// Check if the instance can write to the s3 bucket
+	ssh.CheckSSHCommand(t, host, fmt.Sprintf("echo test > test.file && aws s3 cp test.file s3://%s/test.file", bucketID))
+
+	// Check if the instance can delete from the s3 bucket
+	ssh.CheckSSHCommand(t, host, fmt.Sprintf("aws s3 rm s3://%s/test.file", bucketID))
 }
