@@ -102,6 +102,9 @@ func Pritunl(t *testing.T) {
 	// Check if the logrotate configuration is valid
 	ssh.CheckSSHCommand(t, host, "logrotate -d '/etc/logrotate.d/pritunl'")
 
+	// Check if the s3 bucket has been created
+	aws.AssertS3BucketExists(t, awsRegion, bucketID)
+
 	// Check if the instance can list the contents of the s3 bucket
 	ssh.CheckSSHCommand(t, host, fmt.Sprintf("aws s3 ls s3://%s", bucketID))
 
