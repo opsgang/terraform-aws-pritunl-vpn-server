@@ -13,7 +13,7 @@ import (
 )
 
 // Pritunl the pritunl terraform
-func Pritunl(t *testing.T) {
+func TestPritunl(t *testing.T) {
 	t.Parallel()
 
 	// A unique ID we can use to namespace resources so we don't clash with anything already in the AWS account or
