@@ -38,6 +38,7 @@ func TestPritunl(t *testing.T) {
 	vpcID := "vpc-10569769"
 	amiID := "ami-0ff8a91507f77f867"
 	publcSubnetID := "subnet-282be672"
+	whitelist := []string{"0.0.0.0/0"}
 	tags := map[string]string{
 		"env":     "test",
 		"service": "pritunl",
@@ -57,6 +58,7 @@ func TestPritunl(t *testing.T) {
 			"vpc_id":           vpcID,
 			"ami_id":           amiID,
 			"public_subnet_id": publcSubnetID,
+			"whitelist":        whitelist,
 			"tags":             tags,
 			"s3_bucket_name":   bucketName,
 		},
