@@ -107,10 +107,28 @@ func TestPritunl(t *testing.T) {
 	ssh.CheckSshCommand(t, host, "curl google.com")
 
 	// Check if the pritunl package is installed
-	ssh.CheckSshCommand(t, host, "rpm -q pritunl")
+	// ssh.CheckSshCommand(t, host, "rpm -q pritunl")
 
 	// Check if the mongodb package is installed
-	ssh.CheckSshCommand(t, host, "rpm -q mongodb-org")
+	// ssh.CheckSshCommand(t, host, "rpm -q mongodb-org")
+
+	// Simple pritunl configuration on TCP 12345
+	testDBURL := "https://drive.google.com/uc?export=download&id=1jH1Eve_n0v0yrogXrZFDfIaGwJsir7TM"
+	testDBFileName := "dump.tgz"
+
+	ssh.CheckSshCommand(t, host, fmt.Sprintf("cd /tmp && curl -L -o %s '%s' && tar zxvf %s && mongorestore", testDBFileName, testDBURL, testDBFileName))
+
+	// Check if the vpn server is running
+	testVPNServerPort := 12345
+	retry.DoWithRetry(t, "Check if the VPN server is running", maxRetries, timeBetweenRetries, func() (string, error) {
+		_, err := ssh.CheckSshCommandE(t, host, fmt.Sprintf("sudo restart pritunl && nc -zw 3 127.0.0.1 %d ", testVPNServerPort))
+
+		if err != nil {
+			return "", err
+		}
+
+		return "", nil
+	})
 
 	// Check if the AWS SSM agent is running
 	ssh.CheckSshCommand(t, host, "aws ssm describe-instance-information")

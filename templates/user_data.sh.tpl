@@ -104,3 +104,6 @@ if [ -f /etc/bashrc ]; then
   . /etc/bashrc
 fi
 EOF
+
+# Install nc
+yum install -y nmap-ncat
