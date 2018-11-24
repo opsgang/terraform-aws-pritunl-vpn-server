@@ -2,12 +2,13 @@ package test
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/aws"
-	"github.com/gruntwork-io/terratest/modules/http-helper"
 	"github.com/gruntwork-io/terratest/modules/random"
+	"github.com/gruntwork-io/terratest/modules/retry"
 	"github.com/gruntwork-io/terratest/modules/ssh"
 	"github.com/gruntwork-io/terratest/modules/terraform"
 )
@@ -18,14 +19,14 @@ func TestPritunl(t *testing.T) {
 
 	// A unique ID we can use to namespace resources so we don't clash with anything already in the AWS account or
 	// tests running in parallel
-	uniqueID := random.UniqueId()
+	uniqueID := strings.ToLower(random.UniqueId())
 
 	// Give this EC2 Instance and other resources in the Terraform code a name with a unique ID so it doesn't clash
 	// with anything else in the AWS account.
 	// instanceName := fmt.Sprintf("terratest-http-example-%s", uniqueID)
 
 	// Specify the text the EC2 Instance will return when we make HTTP requests to it.
-	instanceText := fmt.Sprintf("Hello, %s!", uniqueID)
+	// instanceText := fmt.Sprintf("Hello, %s!", uniqueID)
 
 	// Pick a random AWS region to test in. This helps ensure your code works in all regions.
 	//awsRegion := aws.GetRandomRegion(t, nil, nil)
@@ -75,7 +76,7 @@ func TestPritunl(t *testing.T) {
 
 	instancePublicIP := terraform.Output(t, terraformOptions, "vpn_public_ip_address")
 
-	vpnManagementUI := terraform.Output(t, terraformOptions, "vpn_management_ui")
+	// vpnManagementUI := terraform.Output(t, terraformOptions, "vpn_management_ui")
 
 	bucketID := terraform.Output(t, terraformOptions, "s3_bucket_name")
 
@@ -84,7 +85,7 @@ func TestPritunl(t *testing.T) {
 	timeBetweenRetries := 5 * time.Second
 
 	// Verify that we get back a 200 OK from the management UI
-	http_helper.HttpGetWithRetry(t, vpnManagementUI, 200, instanceText, maxRetries, timeBetweenRetries)
+	// http_helper.HttpGetWithRetry(t, vpnManagementUI, 200, instanceText, maxRetries, timeBetweenRetries)
 
 	// Set up host for ssh checks
 	host := ssh.Host{
@@ -94,7 +95,13 @@ func TestPritunl(t *testing.T) {
 	}
 
 	// Verify that we can ssh to the instance
-	ssh.CheckSshConnection(t, host)
+	retry.DoWithRetry(t, "Check SSH connection", maxRetries, timeBetweenRetries, func() (string, error) {
+		err := ssh.CheckSshConnectionE(t, host)
+		if err != nil {
+			return "", fmt.Errorf("Could not connect to instance")
+		}
+		return "", nil
+	})
 
 	// Verify outbound internet access on the instance
 	ssh.CheckSshCommand(t, host, "curl google.com")
