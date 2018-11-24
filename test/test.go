@@ -72,16 +72,14 @@ func Pritunl(t *testing.T) {
 	http_helper.HttpGetWithRetry(t, vpnManagementUI, 200, instanceText, maxRetries, timeBetweenRetries)
 
 	// Set up key pair for ssh checks
-	keyPair := ssh.KeyPair{
-		PublicKey:  pubKey,
-		PrivateKey: privateKey,
-	}
+
+	ec2KeyPair := aws.CreateAndImportEC2KeyPair(t, awsRegion, fmt.Sprintf("pritunl-test-key-%s", uniqueID))
 
 	// Set up host for ssh checks
 	host := ssh.Host{
 		Hostname:    instancePublicIP,
-		SshUserName: "ubuntu",
-		SshKeyPair:  *keyPair,
+		SshUserName: "ec2-user",
+		SshKeyPair:  *ec2KeyPair,
 	}
 
 	// Verify that we can ssh to the instance
