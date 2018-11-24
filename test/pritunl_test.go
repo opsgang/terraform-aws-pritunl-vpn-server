@@ -22,7 +22,7 @@ func Pritunl(t *testing.T) {
 
 	// Give this EC2 Instance and other resources in the Terraform code a name with a unique ID so it doesn't clash
 	// with anything else in the AWS account.
-	instanceName := fmt.Sprintf("terratest-http-example-%s", uniqueID)
+	// instanceName := fmt.Sprintf("terratest-http-example-%s", uniqueID)
 
 	// Specify the text the EC2 Instance will return when we make HTTP requests to it.
 	instanceText := fmt.Sprintf("Hello, %s!", uniqueID)
@@ -33,7 +33,7 @@ func Pritunl(t *testing.T) {
 
 	// Set up key pair for ssh checks
 	ec2KeyPair := aws.CreateAndImportEC2KeyPair(t, awsRegion, fmt.Sprintf("pritunl-test-key-%s", uniqueID))
-	defer aws.DeleteEC2KeyPair(t, *ec2KeyPair)
+	defer aws.DeleteEC2KeyPair(t, ec2KeyPair)
 
 	vpcID := "vpc-10569769"
 	amiID := "ami-0ff8a91507f77f867"
@@ -55,7 +55,7 @@ func Pritunl(t *testing.T) {
 			"aws_region":       awsRegion,
 			"aws_key_name":     ec2KeyPair.Name,
 			"vpc_id":           vpcID,
-			"ami_id":           amiId,
+			"ami_id":           amiID,
 			"public_subnet_id": publcSubnetID,
 			"tags":             tags,
 			"s3_bucket_name":   bucketName,
@@ -69,7 +69,7 @@ func Pritunl(t *testing.T) {
 	terraform.InitAndApply(t, terraformOptions)
 
 	// Run `terraform output` to get the value of an output variable
-	instancePrivateIP := terraform.Output(t, terraformOptions, "vpn_instance_private_ip_address")
+	// instancePrivateIP := terraform.Output(t, terraformOptions, "vpn_instance_private_ip_address")
 
 	instancePublicIP := terraform.Output(t, terraformOptions, "vpn_public_ip_address")
 
@@ -88,36 +88,36 @@ func Pritunl(t *testing.T) {
 	host := ssh.Host{
 		Hostname:    instancePublicIP,
 		SshUserName: "ec2-user",
-		SshKeyPair:  *ec2KeyPair,
+		SshKeyPair:  ec2KeyPair.KeyPair,
 	}
 
 	// Verify that we can ssh to the instance
-	ssh.CheckSSHConnection(t, host)
+	ssh.CheckSshConnection(t, host)
 
 	// Verify outbound internet access on the instance
-	ssh.CheckSSHCommand(t, host, "curl google.com")
+	ssh.CheckSshCommand(t, host, "curl google.com")
 
 	// Check if the pritunl package is installed
-	ssh.CheckSSHCommand(t, host, "rpm -q pritunl")
+	ssh.CheckSshCommand(t, host, "rpm -q pritunl")
 
 	// Check if the mongodb package is installed
-	ssh.CheckSSHCommand(t, host, "rpm -q mongodb-org")
+	ssh.CheckSshCommand(t, host, "rpm -q mongodb-org")
 
 	// Check if the AWS SSM agent is running
-	ssh.CheckSSHCommand(t, host, "aws ssm describe-instance-information")
+	ssh.CheckSshCommand(t, host, "aws ssm describe-instance-information")
 
 	// Check if the logrotate configuration is valid
-	ssh.CheckSSHCommand(t, host, "logrotate -d '/etc/logrotate.d/pritunl'")
+	ssh.CheckSshCommand(t, host, "logrotate -d '/etc/logrotate.d/pritunl'")
 
 	// Check if the s3 bucket has been created
 	aws.AssertS3BucketExists(t, awsRegion, bucketID)
 
 	// Check if the instance can list the contents of the s3 bucket
-	ssh.CheckSSHCommand(t, host, fmt.Sprintf("aws s3 ls s3://%s", bucketID))
+	ssh.CheckSshCommand(t, host, fmt.Sprintf("aws s3 ls s3://%s", bucketID))
 
 	// Check if the instance can write to the s3 bucket
-	ssh.CheckSSHCommand(t, host, fmt.Sprintf("echo test > test.file && aws s3 cp test.file s3://%s/test.file", bucketID))
+	ssh.CheckSshCommand(t, host, fmt.Sprintf("echo test > test.file && aws s3 cp test.file s3://%s/test.file", bucketID))
 
 	// Check if the instance can delete from the s3 bucket
-	ssh.CheckSSHCommand(t, host, fmt.Sprintf("aws s3 rm s3://%s/test.file", bucketID))
+	ssh.CheckSshCommand(t, host, fmt.Sprintf("aws s3 rm s3://%s/test.file", bucketID))
 }
