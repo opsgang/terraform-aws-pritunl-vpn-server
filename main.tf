@@ -259,6 +259,7 @@ resource "aws_instance" "pritunl" {
   ami           = var.ami_id
   instance_type = var.instance_type
   key_name      = var.aws_key_name
+  ebs_optimized = var.ebs_optimized
   user_data     = data.template_file.user_data.rendered
 
   vpc_security_group_ids = [

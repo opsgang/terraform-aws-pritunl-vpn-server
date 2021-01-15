@@ -22,8 +22,8 @@ variable "instance_type" {
 
 variable "ebs_optimized" {
   description = "Create EBS optimized EC2 instance"
-  type        = "string"
-  default     = "false"
+  type        = bool
+  default     = false
 }
 
 variable "whitelist" {
