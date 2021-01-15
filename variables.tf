@@ -20,6 +20,12 @@ variable "instance_type" {
   default     = "t2.micro"
 }
 
+variable "ebs_optimized" {
+  description = "Create EBS optimized EC2 instance"
+  type        = "string"
+  default     = "false"
+}
+
 variable "whitelist" {
   description = "[List] Office IP CIDRs for SSH and HTTPS"
   type        = list(string)
