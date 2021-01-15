@@ -17,6 +17,7 @@ After provisioning, don't forget to run commands below:
 * **public_subnet_id:** One of the public subnets to create the instance
 * **ami_id:** Amazon Linux AMI ID
 * **instance_type:** Instance type of the VPN box (t2.small is mostly enough)
+* **ebs_optimized:** Create EBS optimized EC2 instance. Default: `false`
 * **whitelist:** List of office IP addresses that you can SSH and non-VPN connected users can reach temporary profile download pages
 * **whitelist_http:** List of IP addresses that you can allow HTTP connections.
 * **internal_cidrs:** List of CIDRs that will be whitelisted to access the VPN server internally.
