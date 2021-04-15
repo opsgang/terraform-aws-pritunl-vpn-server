@@ -9,3 +9,7 @@ output "vpn_public_ip_address" {
 output "vpn_management_ui" {
   value = "https://${aws_eip.pritunl.public_ip}"
 }
+
+output "s3_bucket_name" {
+  value = "${aws_s3_bucket.backup.id}"
+}

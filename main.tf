@@ -2,6 +2,10 @@ data "aws_region" "current" {}
 
 data "aws_caller_identity" "current" {}
 
+provider "aws" {
+  region = "${var.aws_region}"
+}
+
 locals {
   backup_bucket_name = var.s3_bucket_name != "" ? var.s3_bucket_name : format("%s-%s", var.resource_name_prefix, "backup")
 }
