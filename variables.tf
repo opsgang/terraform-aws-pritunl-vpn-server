@@ -52,12 +52,6 @@ variable "healthchecks_io_key" {
   default     = "invalid"
 }
 
-variable "internal_cidrs" {
-  description = "[List] IP CIDRs to whitelist in the pritunl's security group"
-  type        = list(string)
-  default     = ["10.0.0.0/8"]
-}
-
 variable "s3_bucket_name" {
   description = "[String] Optional S3 bucket name for backups"
   default     = ""

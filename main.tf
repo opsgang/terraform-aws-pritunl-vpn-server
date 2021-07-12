@@ -154,14 +154,6 @@ resource "aws_security_group" "pritunl" {
   description = "${var.resource_name_prefix}-vpn"
   vpc_id      = var.vpc_id
 
-  # SSH access
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.internal_cidrs
-  }
-
   # HTTP access for Let's Encrypt validation
   ingress {
     from_port = 80
@@ -171,28 +163,12 @@ resource "aws_security_group" "pritunl" {
     cidr_blocks = var.whitelist_http
   }
 
-  # HTTPS access
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = var.internal_cidrs
-  }
-
   # VPN WAN access
   ingress {
     from_port   = 10000
     to_port     = 19999
     protocol    = "udp"
     cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # ICMP
-  ingress {
-    from_port   = -1
-    to_port     = -1
-    protocol    = "icmp"
-    cidr_blocks = var.internal_cidrs
   }
 
   # outbound internet access
@@ -211,33 +187,15 @@ resource "aws_security_group" "pritunl" {
 
 resource "aws_security_group" "allow_from_office" {
   name        = "${var.resource_name_prefix}-whitelist"
-  description = "Allows SSH connections and HTTP(s) connections from office"
+  description = "Allows HTTP(s) connections from whitelisted IPs"
   vpc_id      = var.vpc_id
-
-  # SSH access
-  ingress {
-    description = "Allow SSH access from select CIDRs"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.whitelist
-  }
 
   # HTTPS access
   ingress {
-    description = "Allow HTTPS access from select CIDRs"
+    description = "Allow HTTPS access to the web console"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = var.whitelist
-  }
-
-  # ICMP
-  ingress {
-    description = "Allow ICMPv4 from select CIDRs"
-    from_port   = -1
-    to_port     = -1
-    protocol    = "icmp"
     cidr_blocks = var.whitelist
   }
 
