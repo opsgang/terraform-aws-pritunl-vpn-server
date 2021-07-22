@@ -8,11 +8,11 @@ locals {
 
 data "template_file" "user_data" {
   template = templatefile("${path.module}/templates/user_data.sh.tpl",
-  {
-    aws_region          = data.aws_region.current.name
-    s3_backup_bucket    = local.backup_bucket_name
-    healthchecks_io_key = "/pritunl/${var.resource_name_prefix}/healthchecks-io-key"
-  }
+    {
+      aws_region          = data.aws_region.current.name
+      s3_backup_bucket    = local.backup_bucket_name
+      healthchecks_io_key = "/pritunl/${var.resource_name_prefix}/healthchecks-io-key"
+    }
   )
 }
 
@@ -21,7 +21,7 @@ data "template_file" "kms_policy" {
     resource_name_prefix = var.resource_name_prefix
     account_id           = data.aws_caller_identity.current.account_id
     key_admin_arn        = aws_iam_role.role.arn
-  }
+    }
   )
 }
 
@@ -32,7 +32,7 @@ data "template_file" "iam_instance_role_policy" {
     aws_region           = data.aws_region.current.name
     account_id           = data.aws_caller_identity.current.account_id
     ssm_key_prefix       = "/pritunl/${var.resource_name_prefix}/*"
-  }
+    }
   )
 }
 
@@ -55,8 +55,8 @@ resource "aws_kms_key" "parameter_store" {
   enable_key_rotation     = true
 
   tags = merge(
-  tomap({"Name" = format("%s-%s", var.resource_name_prefix, "parameter-store")}),
-  var.tags,
+    tomap({"Name" = format("%s-%s", var.resource_name_prefix, "parameter-store")}),
+    var.tags,
   )
 }
 
@@ -75,8 +75,8 @@ resource "aws_ssm_parameter" "healthchecks_io_key" {
   overwrite = true
 
   tags = merge(
-  tomap({"Name" = format("%s/%s/%s", "pritunl", var.resource_name_prefix, "healthchecks-io-key")}),
-  var.tags,
+    tomap({"Name" = format("%s/%s/%s", "pritunl", var.resource_name_prefix, "healthchecks-io-key")}),
+    var.tags,
   )
 }
 
@@ -108,8 +108,8 @@ resource "aws_s3_bucket" "backup" {
   }
 
   tags = merge(
-  tomap({"Name" = local.backup_bucket_name}),
-  var.tags,
+    tomap({"Name" = local.backup_bucket_name}),
+    var.tags,
   )
 }
 
@@ -204,8 +204,8 @@ resource "aws_security_group" "pritunl" {
   }
 
   tags = merge(
-  tomap({"Name" = format("%s-%s", var.resource_name_prefix, "vpn")}),
-  var.tags,
+    tomap({"Name" = format("%s-%s", var.resource_name_prefix, "vpn")}),
+    var.tags,
   )
 }
 
@@ -271,8 +271,8 @@ resource "aws_instance" "pritunl" {
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   tags = merge(
-  tomap({"Name" = format("%s-%s", var.resource_name_prefix, "vpn")}),
-  var.tags,
+    tomap({"Name" = format("%s-%s", var.resource_name_prefix, "vpn")}),
+    var.tags,
   )
 }
 
