@@ -55,7 +55,7 @@ resource "aws_kms_key" "parameter_store" {
   enable_key_rotation     = true
 
   tags = merge(
-    map("Name", format("%s-%s", var.resource_name_prefix, "parameter-store")),
+    tomap({"Name" = format("%s-%s", var.resource_name_prefix, "parameter-store")}),
     var.tags,
   )
 }
@@ -75,7 +75,7 @@ resource "aws_ssm_parameter" "healthchecks_io_key" {
   overwrite = true
 
   tags = merge(
-    map("Name", format("%s/%s/%s", "pritunl", var.resource_name_prefix, "healthchecks-io-key")),
+    tomap({"Name" = format("%s/%s/%s", "pritunl", var.resource_name_prefix, "healthchecks-io-key")}),
     var.tags,
   )
 }
@@ -108,7 +108,7 @@ resource "aws_s3_bucket" "backup" {
   }
 
   tags = merge(
-    map("Name", local.backup_bucket_name),
+    tomap({"Name" = local.backup_bucket_name}),
     var.tags,
   )
 }
@@ -204,7 +204,7 @@ resource "aws_security_group" "pritunl" {
   }
 
   tags = merge(
-    map("Name", format("%s-%s", var.resource_name_prefix, "vpn")),
+    tomap({"Name" = format("%s-%s", var.resource_name_prefix, "vpn")}),
     var.tags,
   )
 }
@@ -250,8 +250,8 @@ resource "aws_security_group" "allow_from_office" {
   }
 
   tags = merge(
-    map("Name", format("%s-%s", var.resource_name_prefix, "whitelist")),
-    var.tags,
+  tomap({"Name" = format("%s-%s", var.resource_name_prefix, "whitelist")}),
+  var.tags,
   )
 }
 
@@ -271,7 +271,7 @@ resource "aws_instance" "pritunl" {
   iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   tags = merge(
-    map("Name", format("%s-%s", var.resource_name_prefix, "vpn")),
+    tomap({"Name" = format("%s-%s", var.resource_name_prefix, "vpn")}),
     var.tags,
   )
 }
